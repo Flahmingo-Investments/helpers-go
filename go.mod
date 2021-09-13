@@ -1,4 +1,4 @@
-module github.com/Flahmingo-Investments/fhelpers-go
+module github.com/Flahmingo-Investments/helpers-go
 
 go 1.17
 
