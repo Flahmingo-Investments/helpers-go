@@ -1,1 +1,2 @@
-# Flahmingo Golang Utilities
+# Flahmingo Golang Helpers
+
