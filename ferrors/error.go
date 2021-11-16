@@ -347,7 +347,23 @@ func (w *wrapped) Unwrap() error { return w.cause }
 // Wrap wraps an error with custom message.
 // It also records the stack trace at the point it was called.
 func Wrap(err error, msg string) error {
-	return Wrapf(err, msg)
+	if err == nil {
+		return nil
+	}
+
+	// This part is same as wrapf.
+	// But we don't want wrapf in call stack.
+	if werr, ok := err.(*wrapped); ok {
+		werr.msgs = append(werr.msgs, msg)
+		werr.stacks = append(werr.stacks, callers())
+		return werr
+	}
+
+	return &wrapped{
+		cause:  err,
+		stacks: []*stack{callers()},
+		msgs:   []string{msg},
+	}
 }
 
 // Wrapf wraps an error with custom formatted message.
