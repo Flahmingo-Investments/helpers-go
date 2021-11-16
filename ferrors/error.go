@@ -303,6 +303,14 @@ func (w *wrapped) Format(s fmt.State, verb rune) {
 	}
 }
 
+// Code returns the error code.
+func (w *wrapped) Code() ErrorCode {
+	if e, ok := w.cause.(ferror); ok {
+		return e.Code()
+	}
+	return Unknown
+}
+
 // GRPCStatus is implements GRPCStatus interface for wrapped.
 func (w *wrapped) GRPCStatus() *status.Status {
 	if se, ok := w.cause.(interface {
