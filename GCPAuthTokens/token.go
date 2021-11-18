@@ -24,7 +24,6 @@ func GetAuthToken(saEmail string) (string, error) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
 	}
 	return GetAuthFromKube(saEmail)
-	
 
 }
 
@@ -52,13 +51,13 @@ func GetAuthFromKube(saEmail string) (string, error) {
 
 func GetAuthFromFile(path string, saEmail string) (string, error) {
 	ctx := context.Background()
-	if _, err := os.Stat(Path); os.IsNotExist(err) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", err
 	} else if err != nil {
 		return "", err
 	}
 
-	c, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(Path))
+	c, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
 	if err != nil {
 		return "", err
 	}
