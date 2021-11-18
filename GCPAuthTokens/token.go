@@ -50,7 +50,7 @@ func GetAuthFromKube(saEmail string) (string, error) {
 	return token.AccessToken, nil
 }
 
-func GetAuthFromFile(path string, saEmail string) (string, error) {
+func GetAuthFromFile(path, saEmail string) (string, error) {
 	ctx := context.Background()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", err
