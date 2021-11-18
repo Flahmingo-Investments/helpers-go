@@ -14,10 +14,8 @@ const (
 )
 
 func isEnvExist(key string) bool {
-	if _, ok := os.LookupEnv(key); ok {
-		return true
-	}
-	return false
+	_, ok := os.LookupEnv(key)
+	return ok
 }
 
 func GetAuthToken(saEmail string) (string, error) {
