@@ -22,9 +22,9 @@ func isEnvExist(key string) bool {
 func GetAuthToken(saEmail string) (string, error) {
 	if isEnvExist(EnvServiceAcctFile) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
-	} else {
-		return GetAuthFromKube(saEmail)
 	}
+	return GetAuthFromKube(saEmail)
+	
 
 }
 
@@ -50,7 +50,7 @@ func GetAuthFromKube(saEmail string) (string, error) {
 	return token.AccessToken, nil
 }
 
-func GetAuthFromFile(Path string, saEmail string) (string, error) {
+func GetAuthFromFile(path string, saEmail string) (string, error) {
 	ctx := context.Background()
 	if _, err := os.Stat(Path); os.IsNotExist(err) {
 		return "", err
