@@ -25,7 +25,6 @@ func GetAuthToken(saEmail string) (string, error) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
 	}
 	return GetAuthFromKube(saEmail)
-
 }
 
 func GetAuthFromKube(saEmail string) (string, error) {
