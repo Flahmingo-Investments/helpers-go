@@ -1,11 +1,12 @@
 package pkg
 
 import (
-	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"context"
+	"os"
+
+	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"google.golang.org/api/option"
 	credentialsPb "google.golang.org/genproto/googleapis/iam/credentials/v1"
-	"os"
 )
 
 const (
