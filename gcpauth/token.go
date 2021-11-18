@@ -1,4 +1,4 @@
-package pkg
+package gcpauth
 
 import (
 	"context"
@@ -18,6 +18,9 @@ func isEnvExist(key string) bool {
 	return ok
 }
 
+//GetAuthToken returns an access token from GCP
+//If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set, it will read an auth.json file from the path
+//If it isn't set, it will use the use internal GCP mechanism to authenticate it's self.
 func GetAuthToken(saEmail string) (string, error) {
 	if isEnvExist(EnvServiceAcctFile) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
@@ -27,24 +30,13 @@ func GetAuthToken(saEmail string) (string, error) {
 
 func GetAuthFromKube(saEmail string) (string, error) {
 	ctx := context.Background()
-	c, err := credentials.NewIamCredentialsClient(ctx)
+	credentialsClient, err := credentials.NewIamCredentialsClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	defer c.Close()
+	defer credentialsClient.Close()
 
-	requestOpts := &credentialsPb.GenerateAccessTokenRequest{
-		Name:  saEmail,
-		Scope: []string{"https://www.googleapis.com/auth/cloud-platform"},
-	}
-
-	token, err := c.GenerateAccessToken(ctx, requestOpts)
-
-	if err != nil {
-		return "", err
-	}
-
-	return token.AccessToken, nil
+	return getToken(ctx, saEmail, credentialsClient)
 }
 
 func GetAuthFromFile(path, saEmail string) (string, error) {
@@ -54,14 +46,16 @@ func GetAuthFromFile(path, saEmail string) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
-
-	c, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
+	credentialsClient, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
 	if err != nil {
 		return "", err
 	}
+	defer credentialsClient.Close()
 
-	defer c.Close()
+	return getToken(ctx, saEmail, credentialsClient)
+}
 
+func getToken(ctx context.Context, saEmail string, c *credentials.IamCredentialsClient) (string, error) {
 	requestOpts := &credentialsPb.GenerateAccessTokenRequest{
 		Name:  saEmail,
 		Scope: []string{"https://www.googleapis.com/auth/cloud-platform"},
