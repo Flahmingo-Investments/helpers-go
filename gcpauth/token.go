@@ -18,9 +18,9 @@ func isEnvExist(key string) bool {
 	return ok
 }
 
-//GetAuthToken returns an access token from GCP
-//If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set, it will read an auth.json file from the path
-//If it isn't set, it will use the use internal GCP mechanism to authenticate it's self.
+// GetAuthToken returns an access token from GCP
+// If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set, it will read an auth.json file from the path
+// If it isn't set, it will use the use internal GCP mechanism to authenticate it's self.
 func GetAuthToken(saEmail string) (string, error) {
 	if isEnvExist(EnvServiceAcctFile) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
@@ -44,7 +44,8 @@ func GetAuthFromFile(path, saEmail string) (string, error) {
 	if _, err := os.Stat(path); err != nil {
 		return "", err
 	}
-	credentialsClient, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
+	credentialsClient, err :=
+		credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
 	if err != nil {
 		return "", err
 	}
@@ -53,7 +54,9 @@ func GetAuthFromFile(path, saEmail string) (string, error) {
 	return getToken(ctx, saEmail, credentialsClient)
 }
 
-func getToken(ctx context.Context, saEmail string, c *credentials.IamCredentialsClient) (string, error) {
+func getToken(ctx context.Context,
+	saEmail string,
+	c *credentials.IamCredentialsClient) (string, error) {
 	requestOpts := &credentialsPb.GenerateAccessTokenRequest{
 		Name:  saEmail,
 		Scope: []string{"https://www.googleapis.com/auth/cloud-platform"},
