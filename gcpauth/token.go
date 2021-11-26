@@ -41,9 +41,7 @@ func GetAuthFromKube(saEmail string) (string, error) {
 
 func GetAuthFromFile(path, saEmail string) (string, error) {
 	ctx := context.Background()
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return "", err
-	} else if err != nil {
+	if _, err := os.Stat(path); err != nil {
 		return "", err
 	}
 	credentialsClient, err := credentials.NewIamCredentialsClient(ctx, option.WithCredentialsFile(path))
