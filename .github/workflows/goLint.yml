@@ -1,0 +1,20 @@
+name: lint
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - develop
+      - main
+  pull_request:
+jobs:
+  golangci:
+    name: Lint the source code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+
