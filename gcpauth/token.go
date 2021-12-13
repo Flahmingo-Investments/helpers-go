@@ -23,9 +23,11 @@ func isEnvExist(key string) bool {
 // If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set, it will read an auth.json file from the path
 // If it isn't set, it will use the use internal GCP mechanism to authenticate it's self.
 func GetAuthToken(saEmail string) (string, error) {
-	re, _ := regexp.Compile("\\.gserviceaccount\\.com$")
 
-	if !re.Match([]byte(saEmail)) {
+	// getting a token needs this to be appended, so automatically add it if it's not there
+	serviceAcctRegex, _ := regexp.Compile("\\.gserviceaccount\\.com$")
+
+	if !serviceAcctRegex.Match([]byte(saEmail)) {
 		saEmail = saEmail + ".gserviceaccount.com"
 	}
 
