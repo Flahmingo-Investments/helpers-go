@@ -3,6 +3,7 @@ package gcpauth
 import (
 	"context"
 	"os"
+	"regexp"
 
 	credentials "cloud.google.com/go/iam/credentials/apiv1"
 	"google.golang.org/api/option"
@@ -22,6 +23,12 @@ func isEnvExist(key string) bool {
 // If the GOOGLE_APPLICATION_CREDENTIALS environment variable is set, it will read an auth.json file from the path
 // If it isn't set, it will use the use internal GCP mechanism to authenticate it's self.
 func GetAuthToken(saEmail string) (string, error) {
+	re, _ := regexp.Compile("\\.gserviceaccount\\.com$")
+
+	if !re.Match([]byte(saEmail)) {
+		saEmail = saEmail + ".gserviceaccount.com"
+	}
+
 	if isEnvExist(EnvServiceAcctFile) {
 		return GetAuthFromFile(os.Getenv(EnvServiceAcctFile), saEmail)
 	}
