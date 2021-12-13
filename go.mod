@@ -4,6 +4,9 @@ go 1.17
 
 require (
 	cloud.google.com/go v0.97.0
+	cloud.google.com/go/secretmanager v1.0.0
+	github.com/jmoiron/sqlx v1.3.4
+	github.com/lib/pq v1.10.4
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.0
 	google.golang.org/api v0.60.0
