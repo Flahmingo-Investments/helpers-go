@@ -1,6 +1,7 @@
 package test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/Flahmingo-Investments/helpers-go/gcpauth"
@@ -8,7 +9,8 @@ import (
 
 // This test assumes that either gcloud is setup or you are working inside of
 func TestGetSecretByName(t *testing.T) {
-	secret, err := gcpauth.GetSecretByName("***REMOVED***")
+	secretName := os.Getenv("SecretPath")
+	secret, err := gcpauth.GetSecretByName(secretName)
 
 	if err != nil {
 		t.Error(err)
