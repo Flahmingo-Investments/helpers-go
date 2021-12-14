@@ -22,10 +22,9 @@ func main() {
 		saEmail, token)
 
 	//this automatically runs db.ping()
-	conn, err := sqlx.Connect("postgres", connString)
+	_, err = sqlx.Connect("postgres", connString)
 	if err != nil {
 		flog.Errorf("DB conn failed", err)
 	}
 	flog.Infof("Successful connection")
-	defer conn.Close()
 }
