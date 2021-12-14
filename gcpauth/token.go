@@ -25,10 +25,10 @@ func isEnvExist(key string) bool {
 func GetAuthToken(saEmail string) (string, error) {
 
 	// getting a token needs this to be appended, so automatically add it if it's not there
-	serviceAcctRegex, _ := regexp.Compile("\\.gserviceaccount\\.com$")
+	serviceAcctRegex := regexp.MustCompile("\\.gserviceaccount\\.com$")
 
-	if !serviceAcctRegex.Match([]byte(saEmail)) {
-		saEmail = saEmail + ".gserviceaccount.com"
+	if !serviceAcctRegex.MatchString(saEmail) {
+		saEmail += ".gserviceaccount.com"
 	}
 
 	if isEnvExist(EnvServiceAcctFile) {
