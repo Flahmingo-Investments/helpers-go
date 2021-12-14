@@ -1,16 +1,17 @@
-package test
+//go:build integration
+// +build integration
+
+package gcpauth
 
 import (
 	"os"
 	"testing"
-
-	"github.com/Flahmingo-Investments/helpers-go/gcpauth"
 )
 
 // This test assumes that either gcloud is setup or you are working inside of
 func TestGetSecretByName(t *testing.T) {
-	secretName := os.Getenv("SecretPath")
-	secret, err := gcpauth.GetSecretByName(secretName)
+	secretName := os.Getenv("SECRET_PATH")
+	secret, err := GetSecretByName(secretName)
 
 	if err != nil {
 		t.Error(err)
