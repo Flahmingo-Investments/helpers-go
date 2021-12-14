@@ -30,5 +30,4 @@ func GetSecretByName(name string) (string, error) {
 	}
 
 	return string(result.Payload.Data), nil
-
 }
