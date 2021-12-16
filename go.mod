@@ -3,18 +3,15 @@ module github.com/Flahmingo-Investments/helpers-go
 go 1.17
 
 require (
-	cloud.google.com/go v0.97.0
 	cloud.google.com/go/secretmanager v1.0.0
-	github.com/jmoiron/sqlx v1.3.4
-	github.com/lib/pq v1.10.4
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.0
-	google.golang.org/api v0.60.0
 	google.golang.org/genproto v0.0.0-20211029142109-e255c875f7c7
 	google.golang.org/grpc v1.41.0
 )
 
 require (
+	cloud.google.com/go v0.97.0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403 // indirect
@@ -34,6 +31,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1 // indirect
 	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
 	golang.org/x/text v0.3.6 // indirect
+	google.golang.org/api v0.60.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
