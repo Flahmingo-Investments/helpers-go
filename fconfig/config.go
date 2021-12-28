@@ -5,7 +5,6 @@ import (
 	"regexp"
 
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
-	"github.com/Flahmingo-Investments/helpers-go/flog"
 	"github.com/Flahmingo-Investments/helpers-go/gcpauth"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -20,7 +19,6 @@ var envFileRegex = regexp.MustCompile(`\.env$`)
 // gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
 // In order to parse the config, run v.Unmarshal(<config struct>), and ensure all your properties are exported/public
 func LoadConfigViper(files []string) (*viper.Viper, error) {
-
 	var err error
 
 	v := viper.New()
@@ -60,7 +58,6 @@ func LoadConfigViper(files []string) (*viper.Viper, error) {
 			}
 			v.Set(key, secret)
 		}
-
 	}
 
 	return v, nil
@@ -93,11 +90,6 @@ func getSecretPath(val string) string {
 // If no file name is given it will try to load .env file.
 func loadEnv(filename string) error {
 	var err error
-
-	if _, err := os.Stat(filename); err != nil {
-		flog.Errorf(err.Error())
-		return err
-	}
 
 	if filename != "" {
 		err = godotenv.Load(filename)
