@@ -22,8 +22,6 @@ func LoadConfigViper(files []string) (*viper.Viper, error) {
 	var err error
 
 	v := viper.New()
-	v.SetEnvPrefix("")
-	v.AutomaticEnv()
 
 	firstFile := true
 	for _, file := range files {
