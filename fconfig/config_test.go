@@ -4,6 +4,8 @@
 package fconfig
 
 import (
+	"io"
+	"os"
 	"testing"
 )
 
@@ -28,11 +30,13 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := []string{"./testdata/config.yaml", "./testdata/test.env"}
+
+	copyEnvFile(t)
+	defer deleteEnvFile()
 
 	config := &Config{}
 
-	err = LoadConfig(files, config)
+	err = LoadConfig("./testdata/config.yaml", config)
 
 	if err != nil {
 		t.Fatal(err)
@@ -50,4 +54,31 @@ func TestLoadConfig(t *testing.T) {
 	if config.Nested.Val1 != "test" && config.Nested.Val2 != 2 && config.Nested.Val3 != true {
 		t.Fatal("Error parsing nested values")
 	}
+}
+
+var envFilePath = "./testdata/test.env"
+var envFileDest = "./.env"
+
+func copyEnvFile(t *testing.T) {
+	_, err := os.Stat(envFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	source, err := os.Open(envFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close()
+
+	destination, err := os.Create(envFileDest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer destination.Close()
+	io.Copy(destination, source)
+}
+
+func deleteEnvFile() {
+	os.Remove(envFileDest)
 }
