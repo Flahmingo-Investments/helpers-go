@@ -11,31 +11,24 @@ import (
 )
 
 var secretRegex = regexp.MustCompile(`^gSecret://(?P<Path>.+)`)
-var envFileRegex = regexp.MustCompile(`\.env$`)
 
 // readConfig loads the configuration from a given file.
 // For environment variables use the following format int the FILE. `${<Env var>}`
 // For Google secrets, use the following format.
 // gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
 // In order to parse the config, run v.Unmarshal(<config struct>), and ensure all your properties are exported/public
-func readConfig(files []string) (*viper.Viper, error) {
+func readConfig(file string) (*viper.Viper, error) {
 	var err error
 
 	v := viper.New()
+	v.SetConfigFile(file)
+	err = loadEnv()
+	if err != nil {
+		return nil, err
+	}
 
-	firstFile := true
-	for _, file := range files {
-		if envFileRegex.MatchString(file) {
-			err = loadEnv(file)
-			if err != nil {
-				return nil, err
-			}
-		} else if firstFile {
-			v.SetConfigFile(file)
-			firstFile = false
-		} else {
-			v.AddConfigPath(file)
-		}
+	if err != nil {
+
 	}
 
 	err = v.ReadInConfig()
@@ -65,8 +58,8 @@ func readConfig(files []string) (*viper.Viper, error) {
 // For Google secrets, use the following format.
 // gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
 // This function automatically modifies the config file. Ensure all your properties are exported/public
-func LoadConfig(files []string, config interface{}) error {
-	v, err := readConfig(files)
+func LoadConfig(file string, config interface{}) error {
+	v, err := readConfig(file)
 	if err != nil {
 		return err
 	}
@@ -87,18 +80,8 @@ func getSecret(val string) (string, error) {
 
 // loadEnv load environments variables from a file.
 // If no file name is given it will try to load .env file.
-func loadEnv(filename string) error {
+func loadEnv() error {
 	var err error
-
-	if filename != "" {
-		err = godotenv.Load(filename)
-	} else {
-		err = godotenv.Load()
-		// it is fine if .env does not exists
-		if os.IsNotExist(err) {
-			return nil
-		}
-	}
-
+	err = godotenv.Load()
 	return ferrors.WithStack(err)
 }
