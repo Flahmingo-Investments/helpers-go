@@ -77,7 +77,7 @@ func LoadConfig(files []string, config interface{}) error {
 	return nil
 }
 
-//getSecret parse a `gSecret://` string into a gcp secret path, and retrieve it from storage
+// getSecret parse a `gSecret://` string into a gcp secret path, and retrieve it from storage
 func getSecret(val string) (string, error) {
 	matches := secretRegex.FindStringSubmatch(val)
 	pathIndex := secretRegex.SubexpIndex("Path")
