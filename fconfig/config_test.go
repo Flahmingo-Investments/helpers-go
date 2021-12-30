@@ -28,7 +28,7 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := []string{"./assets/config.yaml", "./assets/test.env"}
+	files := []string{"./testdata/config.yaml", "./testdata/test.env"}
 
 	config := &Config{}
 

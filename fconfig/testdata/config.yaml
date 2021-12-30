@@ -5,4 +5,4 @@ secretTestVar: "gSecret://projects/development-flahmingo/secrets/test-secret/ver
 nested:
   val1: "test"
   val2: 2
-  val3: false
+  val3: true
