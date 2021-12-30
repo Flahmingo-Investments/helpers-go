@@ -15,9 +15,9 @@ type Config struct {
 }
 
 type Nested struct {
-	val1 string `mapstructure:"val1"`
-	val2 int    `mapstructure:"val2"`
-	val3 bool   `mapstructure:"val3"`
+	Val1 string `mapstructure:"val1"`
+	Val2 int    `mapstructure:"val2"`
+	Val3 bool   `mapstructure:"val3"`
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -47,7 +47,7 @@ func TestLoadConfig(t *testing.T) {
 	if config.SecretTestVar != "test-value" {
 		t.Fatal("Unable to get secret")
 	}
-	if config.Nested.val1 != "test" && config.Nested.val2 != 2 && config.Nested.val3 != false {
+	if config.Nested.Val1 != "test" && config.Nested.Val2 != 2 && config.Nested.Val3 != true {
 		t.Fatal("Error parsing nested values")
 	}
 }
