@@ -13,12 +13,12 @@ import (
 var secretRegex = regexp.MustCompile(`^gSecret://(?P<Path>.+)`)
 var envFileRegex = regexp.MustCompile(`\.env$`)
 
-// LoadConfigViper loads the configuration from a given file.
+// readConfig loads the configuration from a given file.
 // For environment variables use the following format int the FILE. `${<Env var>}`
 // For Google secrets, use the following format.
 // gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
 // In order to parse the config, run v.Unmarshal(<config struct>), and ensure all your properties are exported/public
-func LoadConfigViper(files []string) (*viper.Viper, error) {
+func readConfig(files []string) (*viper.Viper, error) {
 	var err error
 
 	v := viper.New()
@@ -49,8 +49,7 @@ func LoadConfigViper(files []string) (*viper.Viper, error) {
 		v.Set(key, os.ExpandEnv(val))
 
 		if secretRegex.MatchString(val) {
-			secretPath := getSecretPath(val)
-			secret, err := gcpauth.GetSecretByName(secretPath)
+			secret, err := getSecret(val)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +66,7 @@ func LoadConfigViper(files []string) (*viper.Viper, error) {
 // gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
 // This function automatically modifies the config file. Ensure all your properties are exported/public
 func LoadConfig(files []string, config interface{}) error {
-	v, err := LoadConfigViper(files)
+	v, err := readConfig(files)
 	if err != nil {
 		return err
 	}
@@ -78,10 +77,12 @@ func LoadConfig(files []string, config interface{}) error {
 	return nil
 }
 
-func getSecretPath(val string) string {
+//getSecret parse a `gSecret://` string into a gcp secret path, and retrieve it from storage
+func getSecret(val string) (string, error) {
 	matches := secretRegex.FindStringSubmatch(val)
 	pathIndex := secretRegex.SubexpIndex("Path")
-	return matches[pathIndex]
+	path := matches[pathIndex]
+	return gcpauth.GetSecretByName(path)
 }
 
 // loadEnv load environments variables from a file.
