@@ -27,10 +27,6 @@ func readConfig(file string) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	if err != nil {
-
-	}
-
 	err = v.ReadInConfig()
 	if err != nil {
 		return nil, err
@@ -81,7 +77,6 @@ func getSecret(val string) (string, error) {
 // loadEnv load environments variables from a file.
 // If no file name is given it will try to load .env file.
 func loadEnv() error {
-	var err error
-	err = godotenv.Load()
+	err := godotenv.Load()
 	return ferrors.WithStack(err)
 }
