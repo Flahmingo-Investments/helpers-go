@@ -50,6 +50,11 @@ type HTTPPayload struct {
 	// Examples: "192.168.1.1", "FE80::0202:B3FF:FE1E:8329".
 	RemoteIP string `json:"remoteIp"`
 
+	// The IP address (IPv4 or IPv6) for whom the request is forwarded for.
+	//
+	// Examples: "192.168.1.1", "FE80::0202:B3FF:FE1E:8329".
+	ForwardedFor string `json:"forwarded_for"`
+
 	// The request processing duration on the server, from the time the request was
 	// received until the response was sent.
 	Duration string `json:"duration"`
@@ -68,6 +73,7 @@ func (req *HTTPPayload) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("remoteIp", req.RemoteIP)
 	enc.AddString("duration", req.Duration)
 	enc.AddString("referrer", req.Referrer)
+	enc.AddString("forwardedFor", req.ForwardedFor)
 
 	return nil
 }
@@ -111,6 +117,7 @@ func (l *RequestLogger) WithLogger(next http.Handler) http.Handler {
 			RemoteIP:      r.RemoteAddr,
 			Referrer:      r.Referer(),
 			Duration:      time.Since(start).String(),
+			ForwardedFor:  r.Header.Get("x-forwarded-for"),
 		}
 
 		// What we want to build using buffer
