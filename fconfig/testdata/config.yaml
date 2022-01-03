@@ -1,0 +1,8 @@
+yamlTestVar: "Yaml Test"
+envTestVar: "${ENV_TEST_VAR}"
+secretTestVar: "gSecret://projects/development-flahmingo/secrets/test-secret/versions/latest"
+
+nested:
+  val1: "test"
+  val2: 2
+  val3: true
