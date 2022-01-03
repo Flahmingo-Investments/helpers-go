@@ -5,78 +5,125 @@ import (
 	"regexp"
 
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
-	"github.com/Flahmingo-Investments/helpers-go/gcpauth"
+	"github.com/Flahmingo-Investments/helpers-go/flog"
+	"github.com/Flahmingo-Investments/helpers-go/gcp"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
 var secretRegex = regexp.MustCompile(`^gSecret://(?P<Path>.+)`)
 
-// readConfig loads the configuration from a given file.
-// For environment variables use the following format int the FILE. `${<Env var>}`
-// For Google secrets, use the following format.
-// gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
-// In order to parse the config, run v.Unmarshal(<config struct>), and ensure all your properties are exported/public
-func readConfig(file string) (*viper.Viper, error) {
-	var err error
+// secretClient is helper to expand gcp.SecretClient to support gSecret in path.
+type secretClient struct {
+	*gcp.SecretClient
+}
 
+// getSecret parses a `gSecret://` string into a GCP secret path, and retrieve
+// it from GCP Secret Service.
+func (c *secretClient) getSecret(val string) (string, error) {
+	matches := secretRegex.FindStringSubmatch(val)
+	pathIndex := secretRegex.SubexpIndex("Path")
+	path := matches[pathIndex]
+	return c.GetSecret(path)
+}
+
+// loadConfig loads the configuration from a given file.
+//
+// It expands the environment variables if the value matches `${ENV_NAME}`.
+// It fetches the secret if the value matches gSecret://uri.
+func loadConfig(file string, config interface{}) error {
+	// initialize viper and set the config file to read from.
 	v := viper.New()
 	v.SetConfigFile(file)
-	err = loadEnv()
-	if err != nil {
-		return nil, err
-	}
 
+	// initialize GCP Secret Manager Client
+	gsc, err := gcp.NewSecretClient()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = gsc.Close()
+	}()
+
+	// wrap gsc into secretClient to support `gSecret://` expansion.
+	sc := secretClient{SecretClient: gsc}
+
+	// Read the configuration.
 	err = v.ReadInConfig()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	// Range over all keys and do the following:
+	// - Expand if it is environment variable.
+	// - Fetch if it is gSecret.
 	for _, key := range v.AllKeys() {
 		val := v.GetString(key)
-
+		if val == "" {
+			continue
+		}
+		// expand environment variables inside config file
+		// e.g. ${ENV_NAME}
 		v.Set(key, os.ExpandEnv(val))
 
+		// fetch the secret if value matches the secretRegex
 		if secretRegex.MatchString(val) {
-			secret, err := getSecret(val)
+			flog.Debugf("matched: %s", val)
+			secret, err := sc.getSecret(val)
 			if err != nil {
-				return nil, err
+				return err
 			}
+
+			flog.Debugf("secret: %s", secret)
 			v.Set(key, secret)
 		}
 	}
 
-	return v, nil
+	return v.Unmarshal(config)
 }
 
-// LoadConfig Read the config files, and modify the conifg object
-// For environment variables use the following format int the FILE. `${<Env var>}`
-// For Google secrets, use the following format.
-// gSecret://projects/<projectId>/secrets/<secretName>/versions/<version id or 'latest'>
-// This function automatically modifies the config file. Ensure all your properties are exported/public
+// LoadConfig loads the configuration from a given file and unmarshal it into
+// the provided config.
+// It maps the fields using `mapstructure` tag.
+//
+// Example:
+//   type Config struct {
+//   	 Env   string `mapstructure:env`
+//   	 DBUri string `mapstructure:db_uri`
+//   }
+//
+// It expands the environment variables if the value matches `${ENV_NAME}`.
+// It fetches the secret if the value matches gSecret://uri.
 func LoadConfig(file string, config interface{}) error {
-	v, err := readConfig(file)
+	// load .env file inside the current working directory.
+	err := LoadEnv("")
+	if err != nil {
+		return ferrors.Wrap(err, "unable to read environment variables")
+	}
+
+	// load configuration into the provided config.
+	err = loadConfig(file, config)
 	if err != nil {
 		return err
 	}
-	err = v.Unmarshal(config)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
-// getSecret parse a `gSecret://` string into a gcp secret path, and retrieve it from storage
-func getSecret(val string) (string, error) {
-	matches := secretRegex.FindStringSubmatch(val)
-	pathIndex := secretRegex.SubexpIndex("Path")
-	path := matches[pathIndex]
-	return gcpauth.GetSecretByName(path)
-}
-
-// loadEnv load environments variables from a file.
+// LoadEnv load environments variables from a file.
 // If no file name is given it will try to load .env file.
-func loadEnv() error {
-	err := godotenv.Load()
+func LoadEnv(filename string) error {
+	var err error
+
+	if filename != "" {
+		err = godotenv.Load(filename)
+	} else {
+		err = godotenv.Load()
+		// it is fine if .env does not exists
+		if os.IsNotExist(err) {
+			return nil
+		}
+	}
+
 	return ferrors.WithStack(err)
 }

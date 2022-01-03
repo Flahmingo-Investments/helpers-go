@@ -4,81 +4,72 @@
 package fconfig
 
 import (
-	"io"
-	"os"
+	"reflect"
 	"testing"
 )
 
-type Config struct {
+type config struct {
 	EnvTestVar    string `mapstructure:"envTestVar"`
 	YamlTestVar   string `mapstructure:"yamlTestVar"`
 	SecretTestVar string `mapstructure:"secretTestVar"`
-	Nested        Nested `mapstructure:"nested"`
+	Nested        nested `mapstructure:"nested"`
 }
 
-type Nested struct {
+type nested struct {
 	Val1 string `mapstructure:"val1"`
 	Val2 int    `mapstructure:"val2"`
 	Val3 bool   `mapstructure:"val3"`
 }
 
 func TestLoadConfig(t *testing.T) {
-	var err error
-
-	envTestVal := "EnvVarValue 1235543"
-	yamlTestVal := "Yaml Test"
-	if err != nil {
-		t.Fatal(err)
+	// TODO: Find a way to replace project id from config file.
+	testCases := []struct {
+		name       string
+		configName string
+		envName    string
+		want       *config
+		wantErr    bool
+	}{
+		{
+			name:       "should load simple config",
+			configName: "testdata/config.yaml",
+			envName:    "testdata/test.env",
+			want: &config{
+				EnvTestVar:    "EnvVarValue 1235543",
+				YamlTestVar:   "Yaml Test",
+				SecretTestVar: "test-value",
+				Nested: nested{
+					Val1: "test",
+					Val2: 2,
+					Val3: true,
+				},
+			},
+		},
 	}
 
-	copyEnvFile(t)
-	defer deleteEnvFile()
+	for i := range testCases {
+		tc := testCases[i]
+		t.Run(tc.name, func(t *testing.T) {
+			got := &config{}
 
-	config := &Config{}
+			if tc.envName != "" {
+				LoadEnv(tc.envName)
+			}
 
-	err = LoadConfig("./testdata/config.yaml", config)
+			err := LoadConfig(tc.configName, got)
+			if tc.wantErr && err == nil {
+				t.Errorf("expected error but got nil")
+				return
+			}
+			if err != nil {
+				t.Errorf("expected error to be nil but, got error: %+v", err)
+				return
+			}
 
-	if err != nil {
-		t.Fatal(err)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("expected = %+v but, got = %+v", tc.want, got)
+				return
+			}
+		})
 	}
-
-	if config.YamlTestVar != yamlTestVal {
-		t.Fatal("Yaml var did not match")
-	}
-	if config.EnvTestVar != envTestVal {
-		t.Fatal("Env var did not match")
-	}
-	if config.SecretTestVar != "test-value" {
-		t.Fatal("Unable to get secret")
-	}
-	if config.Nested.Val1 != "test" && config.Nested.Val2 != 2 && config.Nested.Val3 != true {
-		t.Fatal("Error parsing nested values")
-	}
-}
-
-var envFilePath = "./testdata/test.env"
-var envFileDest = "./.env"
-
-func copyEnvFile(t *testing.T) {
-	_, err := os.Stat(envFilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	source, err := os.Open(envFilePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer source.Close()
-
-	destination, err := os.Create(envFileDest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer destination.Close()
-	io.Copy(destination, source)
-}
-
-func deleteEnvFile() {
-	os.Remove(envFileDest)
 }
