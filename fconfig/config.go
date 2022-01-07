@@ -21,7 +21,6 @@ type secretClient struct {
 // getSecret parses a `gSecret://` string into a GCP secret path, and retrieve
 // it from GCP Secret Service.
 func (c *secretClient) getSecret(val string) (string, error) {
-
 	matches := secretRegex.FindStringSubmatch(val)
 	pathIndex := secretRegex.SubexpIndex("Path")
 	path := matches[pathIndex]
