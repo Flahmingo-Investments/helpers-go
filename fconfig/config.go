@@ -21,6 +21,7 @@ type secretClient struct {
 // getSecret parses a `gSecret://` string into a GCP secret path, and retrieve
 // it from GCP Secret Service.
 func (c *secretClient) getSecret(val string) (string, error) {
+
 	matches := secretRegex.FindStringSubmatch(val)
 	pathIndex := secretRegex.SubexpIndex("Path")
 	path := matches[pathIndex]
@@ -37,16 +38,8 @@ func loadConfig(file string, config interface{}) error {
 	v.SetConfigFile(file)
 
 	// initialize GCP Secret Manager Client
-	gsc, err := gcp.NewSecretClient()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = gsc.Close()
-	}()
-
-	// wrap gsc into secretClient to support `gSecret://` expansion.
-	sc := secretClient{SecretClient: gsc}
+	var err error
+	var sc secretClient
 
 	// Read the configuration.
 	err = v.ReadInConfig()
@@ -68,6 +61,14 @@ func loadConfig(file string, config interface{}) error {
 
 		// fetch the secret if value matches the secretRegex
 		if secretRegex.MatchString(val) {
+			if sc.SecretClient == nil {
+				gsc, err := gcp.NewSecretClient()
+				if err != nil {
+					return err
+				}
+				// wrap gsc into secretClient to support `gSecret://` expansion.
+				sc = secretClient{SecretClient: gsc}
+			}
 			flog.Debugf("matched: %s", val)
 			secret, err := sc.getSecret(val)
 			if err != nil {
@@ -78,7 +79,9 @@ func loadConfig(file string, config interface{}) error {
 			v.Set(key, secret)
 		}
 	}
-
+	if sc.SecretClient != nil {
+		sc.Close()
+	}
 	return v.Unmarshal(config)
 }
 
