@@ -45,6 +45,20 @@ func TestLoadConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:       "config without secrets",
+			configName: "testdata/configWoSecret.yaml",
+			want: &config{
+				EnvTestVar:    "",
+				YamlTestVar:   "Yaml Test",
+				SecretTestVar: "",
+				Nested: nested{
+					Val1: "test",
+					Val2: 2,
+					Val3: true,
+				},
+			},
+		},
 	}
 
 	for i := range testCases {

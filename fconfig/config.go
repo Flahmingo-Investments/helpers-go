@@ -1,3 +1,4 @@
+// Package fconfig provides support to load config files and expand secrets.
 package fconfig
 
 import (
@@ -5,7 +6,6 @@ import (
 	"regexp"
 
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
-	"github.com/Flahmingo-Investments/helpers-go/flog"
 	"github.com/Flahmingo-Investments/helpers-go/gcp"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -36,23 +36,15 @@ func loadConfig(file string, config interface{}) error {
 	v := viper.New()
 	v.SetConfigFile(file)
 
-	// initialize GCP Secret Manager Client
-	gsc, err := gcp.NewSecretClient()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = gsc.Close()
-	}()
-
-	// wrap gsc into secretClient to support `gSecret://` expansion.
-	sc := secretClient{SecretClient: gsc}
-
 	// Read the configuration.
-	err = v.ReadInConfig()
+	err := v.ReadInConfig()
 	if err != nil {
 		return err
 	}
+
+	// Declaring a client early not initializing it.
+	// So, we can initailize it only when we find a 'gSecret'.
+	var sc *secretClient
 
 	// Range over all keys and do the following:
 	// - Expand if it is environment variable.
@@ -68,17 +60,25 @@ func loadConfig(file string, config interface{}) error {
 
 		// fetch the secret if value matches the secretRegex
 		if secretRegex.MatchString(val) {
-			flog.Debugf("matched: %s", val)
+			if sc == nil {
+				gsc, err := gcp.NewSecretClient()
+				if err != nil {
+					return err
+				}
+				// wrap gsc into secretClient to support `gSecret://` expansion.
+				sc = &secretClient{SecretClient: gsc}
+			}
 			secret, err := sc.getSecret(val)
 			if err != nil {
 				return err
 			}
 
-			flog.Debugf("secret: %s", secret)
 			v.Set(key, secret)
 		}
 	}
-
+	if sc != nil {
+		_ = sc.Close()
+	}
 	return v.Unmarshal(config)
 }
 
