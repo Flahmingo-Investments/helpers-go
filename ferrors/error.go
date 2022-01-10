@@ -30,13 +30,10 @@ import (
 var ( // Separator for wrapped error.
 	_separator = []byte(": ")
 
-	// Prefix for adding indentation in error messages.
-	_indent = []byte("\t")
-
-	// Line seperator for multiline messages or details.
+	// Line separator for multiline messages or details.
 	_lineSeparator = []byte("\n-  ")
 
-	// Line seperator for nested messages or details.
+	// Line separator for nested messages or details.
 	_nestedlineSeperator = []byte("\n\t-  ")
 )
 
