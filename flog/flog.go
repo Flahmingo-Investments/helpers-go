@@ -22,34 +22,78 @@ var (
 // see what is coming inside.
 var Debugf = log.Printf
 
+// Debug is called to write debug logs, such as logging request parameter to
+// see what is coming inside.
+var Debug = log.Print
+
 // Verbosef is called to write verbose logs, such as when a new connection is
 // established correctly.
 var Verbosef = log.Printf
 
+// Verbose is called to write verbose logs, such as when a new connection is
+// established correctly.
+var Verbose = log.Print
+
 // Infof is called to write informational logs, such as when startup has
 var Infof = log.Printf
 
+// Info is called to write informational logs, such as when startup has
+var Info = log.Print
+
+// Infow is called to write informational logs, but as key value pairs.
+var Infow = log.Printf
+
 // Errorf is called to write an error log, such as when a new connection fails.
 var Errorf = log.Printf
+
+// Error is called to write an error log, such as when a new connection fails.
+var Error = log.Print
 
 // Fatalf is called to write an error log and then exit with non-zero status code.
 // It cannot be disabled.
 var Fatalf = log.Fatalf
 
-// Infow is called to write informational logs, but as key value pairs.
-var Infow = log.Printf
+// Fatal is called to write an error log and then exit with non-zero status code.
+// It cannot be disabled.
+var Fatal = log.Fatal
+
+// Warnf is called to write an error log that can be ignored.
+var Warnf = log.Printf
+
+// Warn is called to write an error log that can be ignored.
+var Warn = log.Print
 
 // LogDebugToStdout updates Verbosef and Info logging to use stdout instead of stderr.
 func LogDebugToStdout() {
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 	Verbosef = logger.Printf
+	Verbose = logger.Println
 	Infof = logger.Printf
+	Info = logger.Println
 	Debugf = logger.Printf
+	Debug = logger.Println
 	Fatalf = logger.Fatalf
+	Fatal = logger.Fatalln
+	Warnf = logger.Printf
+	Warn = logger.Println
+}
+
+// noopf is no op
+func noopf(string, ...interface{}) {
+	// Enjoyable activities that produce flow have a potentially negative effect:
+	// while they are capable of improving the quality of existence by creating
+	// order in the mind, they can become addictive, at which point the self becomes
+	// a captive of a certain kind of order, and is then unwilling to cope with the
+	// ambiguities of life.
+	//
+	//	  - Mihaly Csikszentmihalyi
+	//
+	//
+	// Thus, this function do nothing.
 }
 
 // noop is no op
-func noop(string, ...interface{}) {
+func noop(...interface{}) {
 	// Enjoyable activities that produce flow have a potentially negative effect:
 	// while they are capable of improving the quality of existence by creating
 	// order in the mind, they can become addictive, at which point the self becomes
@@ -64,15 +108,19 @@ func noop(string, ...interface{}) {
 
 // LogVerboseToNowhere updates Verbosef so verbose log messages are discarded
 func LogVerboseToNowhere() {
-	Verbosef = noop
+	Verbosef = noopf
 }
 
 // DisableLogging sets all logging levels to no-op's.
 func DisableLogging() {
-	Debugf = noop
-	Verbosef = noop
-	Infof = noop
-	Errorf = noop
+	Verbosef = noopf
+	Verbose = noop
+	Infof = noopf
+	Info = noop
+	Debugf = noopf
+	Debug = noop
+	Warnf = noopf
+	Warn = noop
 }
 
 // Config configures flog structured logging.
@@ -152,18 +200,25 @@ func InitializeSructuredLogs(c *Config) (func(), error) {
 
 	Verbosef = sugar.Infof
 	if !c.Verbose {
-		Verbosef = noop
+		Verbosef = noopf
 	}
 
+	Debug = sugar.Debug
 	Debugf = sugar.Debugf
 	if !c.Debug {
-		Debugf = noop
+		Debugf = noopf
+		Debug = noop
 	}
 
 	Infof = sugar.Infof
-	Errorf = sugar.Errorf
-	Fatalf = sugar.Fatalf
+	Info = sugar.Info
 	Infow = sugar.Infow
+	Errorf = sugar.Errorf
+	Error = sugar.Error
+	Fatalf = sugar.Fatalf
+	Fatal = sugar.Fatal
+	Warnf = sugar.Warnf
+	Warn = sugar.Warn
 
 	return func() {
 		_ = logger.Sync()
