@@ -19,19 +19,33 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var (
-	// Separator for wrapped error.
+var ( // Separator for wrapped error.
 	_separator = []byte(": ")
 
 	// Prefix for adding indentation in error messages.
-	_indent = []byte("    ")
+	_indent = []byte("\t")
+
+	// Line seperator for multiline messages or details.
+	_lineSeparator = []byte("\n-  ")
+
+	// Line seperator for nested messages or details.
+	_nestedlineSeperator = []byte("\n\t-  ")
 )
+
+// buffer pool to reduce string allocations.
+var _buffer = sync.Pool{
+	New: func() interface{} {
+		return &bytes.Buffer{}
+	},
+}
 
 // Used when we could not determine the file or function name in stack trace.
 const _unknown = "unknown"
@@ -103,9 +117,16 @@ const (
 	Unauthenticated ErrorCode = ErrorCode(codes.Unauthenticated)
 )
 
+// compile time check.
+var (
+	_ error = (*fundamental)(nil)
+	_ error = (*withFields)(nil)
+	_ error = (*wrapped)(nil)
+)
+
 // New returns an error with the supplied message.
 // It also records the stack trace at the point it was called.
-func New(message string) error {
+func New(message string) Ferror {
 	return &fundamental{
 		ErrorCode: Unknown,
 		Msg:       message,
@@ -116,7 +137,7 @@ func New(message string) error {
 // Newf formats according to a format specifier and returns the string
 // as a value that satisfies error.
 // It also records the stack trace at the point it was called.
-func Newf(format string, args ...interface{}) error {
+func Newf(format string, args ...interface{}) Ferror {
 	return &fundamental{
 		ErrorCode: Unknown,
 		Msg:       fmt.Sprintf(format, args...),
@@ -126,19 +147,31 @@ func Newf(format string, args ...interface{}) error {
 
 // WithCode returns an error with the supplied message and error code
 // It also records the stack trace at the point it was called.
-func WithCode(code ErrorCode, message string) error {
-	return &fundamental{
+func WithCode(code ErrorCode, message string, detail ...*ErrorDetail) error {
+	var dtl *ErrorDetail
+	if len(detail) > 0 {
+		dtl = detail[0]
+	}
+
+	return (&fundamental{
 		ErrorCode: code,
 		Msg:       message,
 		stack:     callers(),
-	}
+	}).WithDetail(dtl)
 }
 
 // fundamental is an error that contains an error code, a message and stack trace
 type fundamental struct {
-	ErrorCode ErrorCode
-	Msg       string
+	ErrorCode ErrorCode    `json:"errorCode"`
+	Detail    *ErrorDetail `json:"detail,omitempty"`
+	Msg       string       `json:"msg"`
 	stack     *stack
+}
+
+// WithDetail adds error detail to Ferror.
+func (f *fundamental) WithDetail(detail *ErrorDetail) Ferror {
+	f.Detail = detail
+	return f
 }
 
 // Code returns the error code.
@@ -146,7 +179,23 @@ func (f *fundamental) Code() ErrorCode { return f.ErrorCode }
 
 // Error implements error interface for fundamental
 func (f *fundamental) Error() string {
-	return fmt.Sprintf("(%s) %s", f.ErrorCode, f.Msg)
+	buf, _ := _buffer.Get().(*bytes.Buffer)
+	buf.Reset()
+
+	buf.WriteByte('(')
+	buf.WriteString(f.ErrorCode.String())
+	buf.WriteByte(')')
+	buf.WriteByte(' ')
+	buf.WriteString(f.Msg)
+	if f.Detail != nil {
+		buf.Write(_lineSeparator)
+		buf.WriteString(f.Detail.String())
+	}
+
+	s := buf.String()
+	_buffer.Put(buf)
+
+	return s
 }
 
 // Format implements Formatter interface for fundamental.
@@ -166,7 +215,19 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 
 // GRPCStatus is implements GRPCStatus interface for fundamental.
 func (f *fundamental) GRPCStatus() *status.Status {
-	return status.New(codes.Code(f.ErrorCode), f.Msg)
+	st := status.New(codes.Code(f.ErrorCode), f.Msg)
+	if f.Detail != nil {
+		std, err := st.WithDetails(f.Detail)
+		// check where there was an error while attaching the metadata to status in
+		// above switch block
+		if err != nil {
+			// If this errored, it will always error here, so better panic so we can
+			// figure out why this was silently passing.
+			panic(fmt.Sprintf("unable to attach metadata: %+v", err))
+		}
+		st = std
+	}
+	return st
 }
 
 // withFields is same as fundamental error but it can hold fields that caused the
@@ -174,6 +235,12 @@ func (f *fundamental) GRPCStatus() *status.Status {
 type withFields struct {
 	*fundamental
 	Fields []Field
+}
+
+// WithDetail adds error detail to Ferror.
+func (w *withFields) WithDetail(detail *ErrorDetail) Ferror {
+	w.Detail = detail
+	return w
 }
 
 // Format implements Formatter interface for withFields.
@@ -194,16 +261,27 @@ func (w *withFields) Format(s fmt.State, verb rune) {
 // Error implements error interface for withFields
 func (w *withFields) Error() string {
 	if len(w.Fields) > 0 {
-		// We can optimize the buffer using buffer pool
-		buf := bytes.Buffer{}
-		buf.WriteString(fmt.Sprintf("(%s) %s:\n", w.ErrorCode, w.Msg))
+		buf, _ := _buffer.Get().(*bytes.Buffer)
+		buf.Reset()
 
-		for _, field := range w.Fields {
-			buf.Write(_indent)
-			buf.WriteString(fmt.Sprintf("%s: %s\n", field.Name, field.Description))
+		buf.WriteString(w.fundamental.Error())
+
+		if len(w.Fields) > 0 {
+			buf.Write(_lineSeparator)
+			buf.WriteString("error fields:")
 		}
 
-		return buf.String()
+		for _, field := range w.Fields {
+			buf.Write(_nestedlineSeperator)
+			buf.WriteString(field.Name)
+			buf.Write(_separator)
+			buf.WriteString(field.Description)
+		}
+
+		s := buf.String()
+		_buffer.Put(buf)
+
+		return s
 	}
 
 	return w.fundamental.Error()
@@ -271,7 +349,8 @@ type wrapped struct {
 func (w *wrapped) Error() string {
 	if len(w.msgs) > 0 {
 		// We can optimize the buffer using buffer pool
-		buf := bytes.Buffer{}
+		buf, _ := _buffer.Get().(*bytes.Buffer)
+		buf.Reset()
 
 		for _, m := range w.msgs {
 			buf.WriteString(m)
@@ -280,7 +359,10 @@ func (w *wrapped) Error() string {
 
 		buf.WriteString(w.cause.Error())
 
-		return buf.String()
+		s := buf.String()
+		_buffer.Put(buf)
+
+		return s
 	}
 
 	return w.cause.Error()
@@ -305,7 +387,7 @@ func (w *wrapped) Format(s fmt.State, verb rune) {
 
 // Code returns the error code.
 func (w *wrapped) Code() ErrorCode {
-	if e, ok := w.cause.(ferror); ok {
+	if e, ok := w.cause.(Ferror); ok {
 		return e.Code()
 	}
 	return Unknown
@@ -313,12 +395,7 @@ func (w *wrapped) Code() ErrorCode {
 
 // GRPCStatus is implements GRPCStatus interface for wrapped.
 func (w *wrapped) GRPCStatus() *status.Status {
-	if se, ok := w.cause.(interface {
-		GRPCStatus() *status.Status
-	}); ok {
-		return se.GRPCStatus()
-	}
-	return status.New(codes.Code(Unknown), w.cause.Error())
+	return status.Convert(w.cause)
 }
 
 // WithStack add stack trace to an error
@@ -420,7 +497,7 @@ type Field struct {
 
 // NewInvalidArgumentError return an invalid argument error.
 // It also records the stack trace at the point it was called.
-func NewInvalidArgumentError(msg string, fields ...Field) error {
+func NewInvalidArgumentError(msg string, fields ...Field) Ferror {
 	return &withFields{
 		fundamental: &fundamental{
 			ErrorCode: InvalidArgument,
@@ -433,7 +510,7 @@ func NewInvalidArgumentError(msg string, fields ...Field) error {
 
 // NewAlreadyExistsError returns an already exists error
 // It also records the stack trace at the point it was called.
-func NewAlreadyExistsError(msg string, fields ...Field) error {
+func NewAlreadyExistsError(msg string, fields ...Field) Ferror {
 	return &withFields{
 		fundamental: &fundamental{
 			ErrorCode: AlreadyExists,
@@ -446,7 +523,7 @@ func NewAlreadyExistsError(msg string, fields ...Field) error {
 
 // NewPermissionDeniedError returns permission denied error
 // It also records the stack trace at the point it was called.
-func NewPermissionDeniedError(msg string) error {
+func NewPermissionDeniedError(msg string) Ferror {
 	return &fundamental{
 		ErrorCode: PermissionDenied,
 		stack:     callers(),
@@ -456,7 +533,7 @@ func NewPermissionDeniedError(msg string) error {
 
 // NewUnauthenticatedError returns an unauthenticated error.
 // It also records the stack trace at the point it was called.
-func NewUnauthenticatedError(msg string) error {
+func NewUnauthenticatedError(msg string) Ferror {
 	return &fundamental{
 		ErrorCode: Unauthenticated,
 		stack:     callers(),
@@ -466,7 +543,7 @@ func NewUnauthenticatedError(msg string) error {
 
 // NewNotFoundError returns an not found error.
 // It also records the stack trace at the point it was called.
-func NewNotFoundError(msg string) error {
+func NewNotFoundError(msg string) Ferror {
 	return &fundamental{
 		ErrorCode: NotFound,
 		stack:     callers(),
@@ -474,15 +551,61 @@ func NewNotFoundError(msg string) error {
 	}
 }
 
-// ferror is helper interface to get the error code.
-type ferror interface {
+// Ferror is an error that contains error code, details, and stack traces.
+type Ferror interface {
+	// Code returns the error code.
 	Code() ErrorCode
+	// WithDetail attaches an error detail to Ferror.
+	WithDetail(*ErrorDetail) Ferror
+
+	error
 }
 
 // Code returns error code
 func Code(err error) ErrorCode {
-	if e, ok := err.(ferror); ok {
+	if e, ok := err.(Ferror); ok {
 		return e.Code()
 	}
 	return Unknown
+}
+
+// ErrorDetail describes the cause of the error with structured details.
+//
+// Example of an error when creating an account with email, when email already exists.
+// is not enabled:
+//
+//     { "reason": "EMAIL_ALREADY_EXISTS"
+//       "metadata": {
+//         "email": "email is already in use"
+//       }
+//     }
+//
+// This response indicates that the pubsub.googleapis.com API is not enabled.
+//
+// Example of an error that is returned when attempting to create a Spanner
+// instance in a region that is out of stock:
+//
+//     { "reason": "MARKET_CLOSED"
+//       "metadata": {
+//         "info": "Market is closed."
+//       }
+//     }
+type ErrorDetail errdetails.ErrorInfo
+
+// Reset resets the ErrorDetail.
+func (e *ErrorDetail) Reset() {
+	(*errdetails.ErrorInfo)(e).Reset()
+}
+
+// String implements the fmt.Stringer interface.
+func (e *ErrorDetail) String() string {
+	return (*errdetails.ErrorInfo)(e).String()
+}
+
+// ProtoMessage implements proto Message interface.
+func (*ErrorDetail) ProtoMessage() {}
+
+// ProtoReflect returns a reflective view of message.
+func (e *ErrorDetail) ProtoReflect() protoreflect.Message {
+	return (*errdetails.ErrorInfo)(e).ProtoReflect()
 }
