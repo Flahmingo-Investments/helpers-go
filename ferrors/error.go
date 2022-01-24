@@ -518,6 +518,32 @@ func NewAlreadyExistsError(msg string, fields ...Field) Ferror {
 	}
 }
 
+// NewInternalError returns an internal error.
+// It also records the stack trace at the point it was called.
+func NewInternalError(msg string, fields ...Field) Ferror {
+	return &withFields{
+		fundamental: &fundamental{
+			ErrorCode: Internal,
+			stack:     callers(),
+			Msg:       msg,
+		},
+		Fields: fields,
+	}
+}
+
+// NewOutOfRangeError returns an out of range error.
+// It also records the stack trace at the point it was called.
+func NewOutOfRangeError(msg string, fields ...Field) Ferror {
+	return &withFields{
+		fundamental: &fundamental{
+			ErrorCode: OutOfRange,
+			stack:     callers(),
+			Msg:       msg,
+		},
+		Fields: fields,
+	}
+}
+
 // NewPermissionDeniedError returns permission denied error
 // It also records the stack trace at the point it was called.
 func NewPermissionDeniedError(msg string) Ferror {
