@@ -520,14 +520,11 @@ func NewAlreadyExistsError(msg string, fields ...Field) Ferror {
 
 // NewInternalError returns an internal error.
 // It also records the stack trace at the point it was called.
-func NewInternalError(msg string, fields ...Field) Ferror {
-	return &withFields{
-		fundamental: &fundamental{
-			ErrorCode: Internal,
-			stack:     callers(),
-			Msg:       msg,
-		},
-		Fields: fields,
+func NewInternalError(msg string) Ferror {
+	return &fundamental{
+		ErrorCode: Internal,
+		stack:     callers(),
+		Msg:       msg,
 	}
 }
 
