@@ -144,7 +144,7 @@ func Newf(format string, args ...interface{}) Ferror {
 
 // WithCode returns an error with the supplied message and error code
 // It also records the stack trace at the point it was called.
-func WithCode(code ErrorCode, message string, detail ...*ErrorDetail) error {
+func WithCode(code ErrorCode, message string, detail ...*ErrorDetail) Ferror {
 	var dtl *ErrorDetail
 	if len(detail) > 0 {
 		dtl = detail[0]
@@ -159,7 +159,7 @@ func WithCode(code ErrorCode, message string, detail ...*ErrorDetail) error {
 
 // fundamental is an error that contains an error code, a message and stack trace
 type fundamental struct {
-	ErrorCode ErrorCode    `json:"errorCode"`
+	ErrorCode ErrorCode    `json:"error_code"`
 	Detail    *ErrorDetail `json:"detail,omitempty"`
 	Msg       string       `json:"msg"`
 	stack     *stack
@@ -337,6 +337,7 @@ func (w *withFields) GRPCStatus() *status.Status {
 
 // wrapped wraps an error and add stack traces.
 type wrapped struct {
+	detail *ErrorDetail
 	msgs   []string
 	stacks []*stack
 	cause  error
@@ -363,6 +364,12 @@ func (w *wrapped) Error() string {
 	}
 
 	return w.cause.Error()
+}
+
+// WithDetail adds error detail to Ferror.
+func (w *wrapped) WithDetail(detail *ErrorDetail) Ferror {
+	w.detail = detail
+	return w
 }
 
 // Format implements Formatter interface for wrapped.
@@ -392,11 +399,24 @@ func (w *wrapped) Code() ErrorCode {
 
 // GRPCStatus is implements GRPCStatus interface for wrapped.
 func (w *wrapped) GRPCStatus() *status.Status {
-	return status.Convert(w.cause)
+	st := status.Convert(w.cause)
+	if w.detail != nil {
+		std, err := st.WithDetails(w.detail)
+		// check where there was an error while attaching the metadata to status in
+		// above switch block
+		if err != nil {
+			// If this errored, it will always error here, so better panic so we can
+			// figure out why this was silently passing.
+			panic(fmt.Sprintf("unable to attach metadata: %+v", err))
+		}
+		st = std
+	}
+
+	return st
 }
 
 // WithStack add stack trace to an error
-func WithStack(err error) error {
+func WithStack(err error) Ferror {
 	if err == nil {
 		return nil
 	}
@@ -442,7 +462,7 @@ func Wrap(err error, msg string) error {
 
 // Wrapf wraps an error with custom formatted message.
 // It also records the stack trace at the point it was called.
-func Wrapf(err error, format string, args ...interface{}) error {
+func Wrapf(err error, format string, args ...interface{}) Ferror {
 	if err == nil {
 		return nil
 	}
