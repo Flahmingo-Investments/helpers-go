@@ -149,9 +149,16 @@ func InitializeSructuredLogs(c *Config) (func(), error) {
 	highPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= zapcore.ErrorLevel
 	})
+
 	lowPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl < zapcore.ErrorLevel
 	})
+
+	if !c.Debug {
+		lowPriority = zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl >= zapcore.InfoLevel
+		})
+	}
 
 	// Lock wraps a WriteSyncer in a mutex to make it safe for concurrent use.
 	// In particular, *os.File types must be locked before use.
@@ -161,31 +168,31 @@ func InitializeSructuredLogs(c *Config) (func(), error) {
 		consoleDebugging = zapcore.Lock(os.Stdout)
 	}
 
-	var config zapcore.EncoderConfig
+	var encoderConfig zapcore.EncoderConfig
 	if !c.Human {
-		config = zap.NewProductionEncoderConfig()
+		encoderConfig = zap.NewProductionEncoderConfig()
 	} else {
-		config = zap.NewDevelopmentEncoderConfig()
+		encoderConfig = zap.NewDevelopmentEncoderConfig()
 	}
 
 	// GCP stackdriver requirements
-	config.LevelKey = "severity"
-	config.MessageKey = "message"
-	config.TimeKey = "timestamp"
+	encoderConfig.LevelKey = "severity"
+	encoderConfig.MessageKey = "message"
+	encoderConfig.TimeKey = "timestamp"
 
 	if !c.Human {
-		config.EncodeLevel = zapcore.CapitalLevelEncoder
+		encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	} else {
-		config.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
-	config.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	var consoleEncoder zapcore.Encoder
 
 	if !c.Human {
-		consoleEncoder = zapcore.NewJSONEncoder(config)
+		consoleEncoder = zapcore.NewJSONEncoder(encoderConfig)
 	} else {
-		consoleEncoder = zapcore.NewConsoleEncoder(config)
+		consoleEncoder = zapcore.NewConsoleEncoder(encoderConfig)
 	}
 
 	core := zapcore.NewTee(
@@ -194,7 +201,11 @@ func InitializeSructuredLogs(c *Config) (func(), error) {
 	)
 
 	// By default, caller and stacktrace are not included, so add them here
-	logger = zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger = zap.New(
+		core,
+		zap.AddCaller(),
+		zap.AddStacktrace(zapcore.ErrorLevel),
+	)
 
 	sugar = logger.Sugar()
 
@@ -205,6 +216,7 @@ func InitializeSructuredLogs(c *Config) (func(), error) {
 
 	Debug = sugar.Debug
 	Debugf = sugar.Debugf
+
 	if !c.Debug {
 		Debugf = noopf
 		Debug = noop
