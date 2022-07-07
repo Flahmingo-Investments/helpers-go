@@ -2,13 +2,67 @@ package gcp
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strings"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
+
+var versionsRegex = regexp.MustCompile(`/versions/.*$`)
+
+type SecretVersion struct {
+	Path  string
+	State secretmanagerpb.SecretVersion_State
+}
+
+// ListSecretVersions Get all the secret versions and their status
+// Expected format is
+// - projects/<project id or project name>/secrets/secret-name
+// - projects/<project id or project name>/secrets/secret-name/versions/<int>
+func ListSecretVersions(name string) ([]SecretVersion, error) {
+	if versionsRegex.MatchString(name) {
+		name = versionsRegex.ReplaceAllString(name, "")
+	}
+
+	var rtnMe []SecretVersion
+
+	// Create the client.
+	ctx := context.Background()
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create secretmanager client: %v", err)
+	}
+	defer client.Close()
+
+	// Build the request.
+	req := &secretmanagerpb.ListSecretVersionsRequest{
+		Parent: name,
+	}
+
+	// Call the API.
+	it := client.ListSecretVersions(ctx, req)
+	for {
+		resp, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to list secret versions: %v", err)
+		}
+		rtnMe = append(rtnMe, SecretVersion{
+			Path:  resp.Name,
+			State: resp.State,
+		})
+	}
+
+	return rtnMe, nil
+}
 
 // GetSecretByName gets a secret from gcp by its name
 // The expected format is [projects/*/secrets/*/versions/*]
