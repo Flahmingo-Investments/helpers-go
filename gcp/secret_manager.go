@@ -25,7 +25,6 @@ type SecretVersion struct {
 // - projects/<project id or project name>/secrets/secret-name
 // - projects/<project id or project name>/secrets/secret-name/versions/<int>
 func ListSecretVersions(name string) ([]SecretVersion, error) {
-
 	if versionsRegex.MatchString(name) {
 		name = versionsRegex.ReplaceAllString(name, "")
 	}
