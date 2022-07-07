@@ -21,7 +21,14 @@ type SecretVersion struct {
 }
 
 // ListSecretVersions Get all the secret versions and their status
+// Expected format is
+// - projects/<project id or project name>/secrets/secret-name
+// - projects/<project id or project name>/secrets/secret-name/versions/<int>
 func ListSecretVersions(name string) ([]SecretVersion, error) {
+
+	if versionsRegex.MatchString(name) {
+		name = versionsRegex.ReplaceAllString(name, "")
+	}
 
 	var rtnMe []SecretVersion
 
@@ -56,7 +63,6 @@ func ListSecretVersions(name string) ([]SecretVersion, error) {
 	}
 
 	return rtnMe, nil
-
 }
 
 // GetSecretByName gets a secret from gcp by its name

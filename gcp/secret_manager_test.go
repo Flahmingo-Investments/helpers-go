@@ -20,7 +20,6 @@ func TestGetSecretVersions(t *testing.T) {
 	if len(res) == 0 {
 		t.Fail()
 	}
-
 }
 
 // This test assumes that either gcloud is setup or you are working inside of
