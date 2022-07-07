@@ -10,6 +10,19 @@ import (
 	"time"
 )
 
+func TestGetSecretVersions(t *testing.T) {
+	secretName := os.Getenv("SECRET_PATH")
+
+	res, err := ListSecretVersions(secretName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) == 0 {
+		t.Fail()
+	}
+
+}
+
 // This test assumes that either gcloud is setup or you are working inside of
 func TestGetSecretByName(t *testing.T) {
 	secretName := os.Getenv("SECRET_PATH")
