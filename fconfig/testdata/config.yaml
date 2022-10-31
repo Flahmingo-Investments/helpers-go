@@ -1,6 +1,7 @@
 yamlTestVar: "Yaml Test"
 envTestVar: "${ENV_TEST_VAR}"
 secretTestVar: "gSecret://projects/development-flahmingo/secrets/test-secret/versions/latest"
+secretEnvTestVar: "${SECRET_ENV_TEST_VAR}"
 
 nested:
   val1: "test"

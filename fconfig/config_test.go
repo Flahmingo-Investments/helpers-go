@@ -9,10 +9,11 @@ import (
 )
 
 type config struct {
-	EnvTestVar    string `mapstructure:"envTestVar"`
-	YamlTestVar   string `mapstructure:"yamlTestVar"`
-	SecretTestVar string `mapstructure:"secretTestVar"`
-	Nested        nested `mapstructure:"nested"`
+	EnvTestVar       string `mapstructure:"envTestVar"`
+	YamlTestVar      string `mapstructure:"yamlTestVar"`
+	SecretTestVar    string `mapstructure:"secretTestVar"`
+	SecretEnvTestVar string `mapstructure:"secretEnvTestVar"`
+	Nested           nested `mapstructure:"nested"`
 }
 
 type nested struct {
@@ -35,9 +36,10 @@ func TestLoadConfig(t *testing.T) {
 			configName: "testdata/config.yaml",
 			envName:    "testdata/test.env",
 			want: &config{
-				EnvTestVar:    "EnvVarValue 1235543",
-				YamlTestVar:   "Yaml Test",
-				SecretTestVar: "test-value",
+				EnvTestVar:       "EnvVarValue 1235543",
+				YamlTestVar:      "Yaml Test",
+				SecretTestVar:    "test-value",
+				SecretEnvTestVar: "test-value",
 				Nested: nested{
 					Val1: "test",
 					Val2: 2,
@@ -49,9 +51,10 @@ func TestLoadConfig(t *testing.T) {
 			name:       "config without secrets",
 			configName: "testdata/configWoSecret.yaml",
 			want: &config{
-				EnvTestVar:    "",
-				YamlTestVar:   "Yaml Test",
-				SecretTestVar: "",
+				EnvTestVar:       "",
+				YamlTestVar:      "Yaml Test",
+				SecretTestVar:    "",
+				SecretEnvTestVar: "",
 				Nested: nested{
 					Val1: "test",
 					Val2: 2,
