@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/secretmanager v1.0.0
 	github.com/joho/godotenv v1.4.0
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.20.0
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd
 	google.golang.org/grpc v1.46.2
