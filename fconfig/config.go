@@ -56,24 +56,12 @@ func loadConfig(file string, config interface{}) error {
 		}
 		// expand environment variables inside config file
 		// e.g. ${ENV_NAME}
-		v.Set(key, os.ExpandEnv(val))
+		expandEnvVars(v, key)
 
 		// fetch the secret if value matches the secretRegex
-		if secretRegex.MatchString(val) {
-			if sc == nil {
-				gsc, err := gcp.NewSecretClient()
-				if err != nil {
-					return err
-				}
-				// wrap gsc into secretClient to support `gSecret://` expansion.
-				sc = &secretClient{SecretClient: gsc}
-			}
-			secret, err := sc.getSecret(val)
-			if err != nil {
-				return err
-			}
-
-			v.Set(key, secret)
+		err = expandGSecrets(sc, v, key)
+		if err != nil {
+			return err
 		}
 	}
 	if sc != nil {
@@ -82,15 +70,42 @@ func loadConfig(file string, config interface{}) error {
 	return v.Unmarshal(config)
 }
 
+func expandGSecrets(sc *secretClient, v *viper.Viper, key string) error {
+	val := v.GetString(key)
+	if secretRegex.MatchString(val) {
+		if sc == nil {
+			gsc, err := gcp.NewSecretClient()
+			if err != nil {
+				return err
+			}
+			// wrap gsc into secretClient to support `gSecret://` expansion.
+			sc = &secretClient{SecretClient: gsc}
+		}
+		secret, err := sc.getSecret(val)
+		if err != nil {
+			return err
+		}
+
+		v.Set(key, secret)
+	}
+	return nil
+}
+
+func expandEnvVars(v *viper.Viper, key string) {
+	val := v.GetString(key)
+	v.Set(key, os.ExpandEnv(val))
+}
+
 // LoadConfig loads the configuration from a given file and unmarshal it into
 // the provided config.
 // It maps the fields using `mapstructure` tag.
 //
 // Example:
-//   type Config struct {
-//   	 Env   string `mapstructure:env`
-//   	 DBUri string `mapstructure:db_uri`
-//   }
+//
+//	type Config struct {
+//		 Env   string `mapstructure:env`
+//		 DBUri string `mapstructure:db_uri`
+//	}
 //
 // It expands the environment variables if the value matches `${ENV_NAME}`.
 // It fetches the secret if the value matches gSecret://uri.
