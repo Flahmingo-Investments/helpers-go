@@ -93,7 +93,16 @@ func expandGSecrets(sc *secretClient, v *viper.Viper, key string) error {
 
 func expandEnvVars(v *viper.Viper, key string) {
 	val := v.GetString(key)
-	v.Set(key, os.ExpandEnv(val))
+
+	eval := os.Expand(val, func(str string) string {
+		if str == "$" {
+			return "$"
+		}
+
+		return os.Getenv(str)
+	})
+
+	v.Set(key, eval)
 }
 
 // LoadConfig loads the configuration from a given file and unmarshal it into

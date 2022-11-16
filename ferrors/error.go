@@ -2,9 +2,9 @@
 //
 // The traditional error handling idiom in Go is roughly akin to
 //
-//     if err != nil {
-//             return err
-//     }
+//	if err != nil {
+//	        return err
+//	}
 //
 // which when applied recursively up the call stack results in error reports
 // without context or debugging information. The ferrors package allows
@@ -293,7 +293,7 @@ func (w *withFields) GRPCStatus() *status.Status {
 
 	// We do not care about other error codes in withFields
 	//
-	// nolint:exhaustive
+	//nolint:exhaustive
 	switch w.ErrorCode {
 	case InvalidArgument:
 		br := &errdetails.BadRequest{}
@@ -484,9 +484,9 @@ func Wrapf(err error, format string, args ...interface{}) Ferror {
 // An error value has a cause if it implements the following
 // interface:
 //
-//     type causer interface {
-//            Cause() error
-//     }
+//	type causer interface {
+//	       Cause() error
+//	}
 //
 // If the error does not implement Cause, the original error will
 // be returned. If the error is nil, nil will be returned without further
@@ -614,22 +614,22 @@ func Code(err error) ErrorCode {
 // Example of an error when creating an account with email, when email already exists.
 // is not enabled:
 //
-//     { "reason": "EMAIL_ALREADY_EXISTS"
-//       "metadata": {
-//         "email": "email is already in use"
-//       }
-//     }
+//	{ "reason": "EMAIL_ALREADY_EXISTS"
+//	  "metadata": {
+//	    "email": "email is already in use"
+//	  }
+//	}
 //
 // This response indicates that the pubsub.googleapis.com API is not enabled.
 //
 // Example of an error that is returned when attempting to create a Spanner
 // instance in a region that is out of stock:
 //
-//     { "reason": "MARKET_CLOSED"
-//       "metadata": {
-//         "info": "Market is closed."
-//       }
-//     }
+//	{ "reason": "MARKET_CLOSED"
+//	  "metadata": {
+//	    "info": "Market is closed."
+//	  }
+//	}
 type ErrorDetail errdetails.ErrorInfo
 
 // Reset resets the ErrorDetail.
