@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
-	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
 var versionsRegex = regexp.MustCompile(`/versions/.*$`)
