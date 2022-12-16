@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"fmt"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -22,11 +23,14 @@ func GetTokenStruct(ctx context.Context, scopes ...string) (*oauth2.Token, error
 	}
 
 	token, err := credentials.TokenSource.Token()
+	if err != nil {
+		return nil, err
+	}
 
 	return token, nil
 }
 
-func GenHttpHeader(ctx context.Context, scopes ...string) (string, error) {
+func GenHTTPHeader(ctx context.Context, scopes ...string) (string, error) {
 	token, err := GetTokenStruct(ctx, scopes...)
 	if err != nil {
 		return "", err

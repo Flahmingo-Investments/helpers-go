@@ -28,13 +28,13 @@ func TestGetAccessToken(t *testing.T) {
 	}
 }
 
-func TestGenHttpHeader(t *testing.T) {
+func TestGenHTTPHeader(t *testing.T) {
 	ctx := context.Background()
 	tStruct, err := GetTokenStruct(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	header, err := GenHttpHeader(ctx)
+	header, err := GenHTTPHeader(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
