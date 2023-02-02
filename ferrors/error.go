@@ -17,8 +17,10 @@ package ferrors
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -466,6 +468,62 @@ func Wrapf(err error, format string, args ...interface{}) Ferror {
 	if err == nil {
 		return nil
 	}
+
+	if werr, ok := err.(*wrapped); ok {
+		werr.msgs = append(werr.msgs, fmt.Sprintf(format, args...))
+		werr.stacks = append(werr.stacks, callers())
+		return werr
+	}
+
+	return &wrapped{
+		cause:  err,
+		stacks: []*stack{callers()},
+		msgs:   []string{fmt.Sprintf(format, args...)},
+	}
+}
+
+// Join takes an error list, joins them and wraps the error with custom message.
+// It also records the stack trace at the point it was called.
+func Join(errs []error, msg string) error {
+	if errs == nil {
+		return nil
+	}
+	var formatErrList []string
+	for i := range errs {
+		formatErrList = append(formatErrList,
+			fmt.Sprintf("%d. %v", i, errs[i]))
+	}
+
+	err := errors.New(strings.Join(formatErrList, "\n"))
+
+	// This part is same as wrapf.
+	// But we don't want wrapf in call stack.
+	if werr, ok := err.(*wrapped); ok {
+		werr.msgs = append(werr.msgs, msg)
+		werr.stacks = append(werr.stacks, callers())
+		return werr
+	}
+
+	return &wrapped{
+		cause:  err,
+		stacks: []*stack{callers()},
+		msgs:   []string{msg},
+	}
+}
+
+// Joinf takes an error list, joins them and wraps the error with formatted message.
+// It also records the stack trace at the point it was called.
+func Joinf(errs []error, format string, args ...interface{}) Ferror {
+	if errs == nil {
+		return nil
+	}
+	var formatErrList []string
+	for i := range errs {
+		formatErrList = append(formatErrList,
+			fmt.Sprintf("%d. %v", i, errs[i]))
+	}
+
+	err := errors.New(strings.Join(formatErrList, "\n"))
 
 	if werr, ok := err.(*wrapped); ok {
 		werr.msgs = append(werr.msgs, fmt.Sprintf(format, args...))
