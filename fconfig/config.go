@@ -3,11 +3,13 @@ package fconfig
 
 import (
 	"os"
+	"reflect"
 	"regexp"
 
 	"github.com/Flahmingo-Investments/helpers-go/ferrors"
 	"github.com/Flahmingo-Investments/helpers-go/gcp"
 	"github.com/joho/godotenv"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
 
@@ -25,6 +27,64 @@ func (c *secretClient) getSecret(val string) (string, error) {
 	pathIndex := secretRegex.SubexpIndex("Path")
 	path := matches[pathIndex]
 	return c.GetSecret(path)
+}
+
+func decodeEnvVars() mapstructure.DecodeHookFuncType {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		// Check that the data is string
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		// expand environment variables inside config file
+		// e.g. ${ENV_NAME}
+		eval := os.Expand(data.(string), func(str string) string {
+			if str == "$" {
+				return "$"
+			}
+
+			return os.Getenv(str)
+		})
+
+		return eval, nil
+	}
+}
+
+func decodeGSecret(sc *secretClient) mapstructure.DecodeHookFuncType {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		// Check that the data is string
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if secretRegex.MatchString(data.(string)) {
+			if sc == nil {
+				gsc, err := gcp.NewSecretClient()
+				if err != nil {
+					return "", err
+				}
+				// wrap gsc into secretClient to support `gSecret://` expansion.
+				sc = &secretClient{SecretClient: gsc}
+			}
+
+			secret, err := sc.getSecret(data.(string))
+			if err != nil {
+				return data, err
+			}
+
+			return secret, nil
+		}
+
+		return data, nil
+	}
 }
 
 // loadConfig loads the configuration from a given file.
@@ -46,63 +106,21 @@ func loadConfig(file string, config interface{}) error {
 	// So, we can initailize it only when we find a 'gSecret'.
 	var sc *secretClient
 
-	// Range over all keys and do the following:
-	// - Expand if it is environment variable.
-	// - Fetch if it is gSecret.
-	for _, key := range v.AllKeys() {
-		val := v.GetString(key)
-		if val == "" {
-			continue
+	defer func() {
+		if sc != nil {
+			_ = sc.Close()
 		}
-		// expand environment variables inside config file
-		// e.g. ${ENV_NAME}
-		expandEnvVars(v, key)
+	}()
 
-		// fetch the secret if value matches the secretRegex
-		err = expandGSecrets(sc, v, key)
-		if err != nil {
-			return err
-		}
-	}
-	if sc != nil {
-		_ = sc.Close()
-	}
-	return v.Unmarshal(config)
-}
-
-func expandGSecrets(sc *secretClient, v *viper.Viper, key string) error {
-	val := v.GetString(key)
-	if secretRegex.MatchString(val) {
-		if sc == nil {
-			gsc, err := gcp.NewSecretClient()
-			if err != nil {
-				return err
-			}
-			// wrap gsc into secretClient to support `gSecret://` expansion.
-			sc = &secretClient{SecretClient: gsc}
-		}
-		secret, err := sc.getSecret(val)
-		if err != nil {
-			return err
-		}
-
-		v.Set(key, secret)
-	}
-	return nil
-}
-
-func expandEnvVars(v *viper.Viper, key string) {
-	val := v.GetString(key)
-
-	eval := os.Expand(val, func(str string) string {
-		if str == "$" {
-			return "$"
-		}
-
-		return os.Getenv(str)
-	})
-
-	v.Set(key, eval)
+	return v.Unmarshal(config,
+		viper.DecodeHook(
+			mapstructure.ComposeDecodeHookFunc(
+				mapstructure.StringToTimeDurationHookFunc(),
+				mapstructure.StringToSliceHookFunc(","),
+				decodeEnvVars(),
+				decodeGSecret(sc),
+			),
+		))
 }
 
 // LoadConfig loads the configuration from a given file and unmarshal it into
