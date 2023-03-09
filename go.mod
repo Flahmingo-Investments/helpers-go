@@ -3,7 +3,7 @@ module github.com/Flahmingo-Investments/helpers-go
 go 1.17
 
 require (
-	cloud.google.com/go/secretmanager v1.9.0
+	cloud.google.com/go/secretmanager v1.10.0
 	github.com/joho/godotenv v1.4.0
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
