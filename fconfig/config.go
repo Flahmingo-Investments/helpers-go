@@ -81,7 +81,6 @@ func decodeGSecret(sc *secretClient) mapstructure.DecodeHookFuncType {
 			}
 
 			return secret, nil
-
 		}
 
 		return data, nil
@@ -122,41 +121,6 @@ func loadConfig(file string, config interface{}) error {
 				decodeGSecret(sc),
 			),
 		))
-}
-
-func expandGSecrets(sc *secretClient, v *viper.Viper, key string) error {
-	val := v.GetString(key)
-	if secretRegex.MatchString(val) {
-		if sc == nil {
-			gsc, err := gcp.NewSecretClient()
-			if err != nil {
-				return err
-			}
-			// wrap gsc into secretClient to support `gSecret://` expansion.
-			sc = &secretClient{SecretClient: gsc}
-		}
-		secret, err := sc.getSecret(val)
-		if err != nil {
-			return err
-		}
-
-		v.Set(key, secret)
-	}
-	return nil
-}
-
-func expandEnvVars(v *viper.Viper, key string) {
-	val := v.GetString(key)
-
-	eval := os.Expand(val, func(str string) string {
-		if str == "$" {
-			return "$"
-		}
-
-		return os.Getenv(str)
-	})
-
-	v.Set(key, eval)
 }
 
 // LoadConfig loads the configuration from a given file and unmarshal it into
